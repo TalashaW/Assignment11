@@ -32,7 +32,8 @@ from app.database import Base
 
 class AbstractCalculation:
     """
-    Abstract base class defining common attributes for all calculations.
+    Abstract base class defining common attributes for all calculations
+    and uses 'a' and 'b' fields for two operands.
     
     This class uses SQLAlchemy's @declared_attr decorator to define columns
     that will be shared across all calculation types. The @declared_attr
@@ -89,16 +90,18 @@ class AbstractCalculation:
         )
 
     @declared_attr
-    def inputs(cls):
-        """
-        JSON column storing the list of numbers for the calculation.
-        
-        Using JSON allows for flexible storage of variable-length input lists.
-        PostgreSQL's native JSON support provides efficient querying and
-        indexing capabilities.
-        """
+    def a(cls):
+        """First operand"""
         return Column(
-            JSON,
+            Float,
+            nullable=False
+        )
+
+    @declared_attr
+    def b(cls):
+        """Second operand"""
+        return Column(
+            Float,
             nullable=False
         )
 
@@ -146,7 +149,7 @@ class AbstractCalculation:
 
     @classmethod
     def create(cls, calculation_type: str, user_id: uuid.UUID,
-               inputs: List[float]) -> "Calculation":
+               a: float, b: float) -> "Calculation":
         """
         Factory method to create the appropriate calculation subclass.
         
@@ -160,10 +163,11 @@ class AbstractCalculation:
         3. Type Safety: Returns strongly-typed subclass instances
         
         Args:
-            calculation_type: Type of calculation (e.g., 'addition')
+            calculation_type: Type of calculation ('Add', 'Subtract', 'Multiply', 'Divide')
             user_id: UUID of the user creating the calculation
-            inputs: List of numbers to calculate
-            
+            a: First operand
+            b: Second operand
+
         Returns:
             An instance of the appropriate Calculation subclass
             
@@ -171,22 +175,34 @@ class AbstractCalculation:
             ValueError: If calculation_type is not supported
             
         Example:
-            calc = Calculation.create('addition', user_id, [1, 2, 3])
+            calc = Calculation.create('Add', user_id, 10, 5)
             assert isinstance(calc, Addition)
-            assert calc.get_result() == 6
+            assert calc.get_result() == 15
         """
         calculation_classes = {
-            'addition': Addition,
-            'subtraction': Subtraction,
-            'multiplication': Multiplication,
-            'division': Division,
+            'add': Addition,
+            'subtract': Subtraction,
+            'multiply': Multiplication,
+            'divide': Division,
         }
-        calculation_class = calculation_classes.get(calculation_type.lower())
+        calc_type_lower = calculation_type.lower()
+        calculation_class = calculation_classes.get(calc_type_lower)
+
         if not calculation_class:
             raise ValueError(
-                f"Unsupported calculation type: {calculation_type}"
+                f"Unsupported calculation type: {calculation_type}. "
+                f"Must be one of: Add, Subtract, Multiply, Divide. "
             )
-        return calculation_class(user_id=user_id, inputs=inputs)
+        
+        if calc_type_lower == 'divide' and b == 0:
+            raise ValueError("Cannot divide by zero")
+        
+        calc = calculation_class(user_id=user_id, a=a, b=b)
+        calc.result = calc.get_result()
+
+        return calc
+    
+    
 
     def get_result(self) -> float:
         """
@@ -204,7 +220,7 @@ class AbstractCalculation:
         )
 
     def __repr__(self):
-        return f"<Calculation(type={self.type}, inputs={self.inputs})>"
+        return f"<Calculation(type={self.type}, a={self.a}, b={self.b}, result={self.result})>"
 
 
 class Calculation(Base, AbstractCalculation):
@@ -233,140 +249,73 @@ class Addition(Calculation):
     """
     Addition calculation subclass.
     
-    Polymorphic Identity: 'addition'
-    Operation: Sums all numbers in the inputs list
+    Polymorphic Identity: 'Add'
+    Operation: a + b
     
     Example:
-        add = Addition(user_id=user_id, inputs=[1, 2, 3])
-        result = add.get_result()  # Returns 6
+        add = Addition(user_id=user_id, a=10, b=5)
+        result = add.get_result()  # Returns 15
     """
-    __mapper_args__ = {"polymorphic_identity": "addition"}
+    __mapper_args__ = {"polymorphic_identity": "Add"}
 
     def get_result(self) -> float:
-        """
-        Calculate the sum of all input numbers.
-        
-        Returns:
-            The sum of all inputs
-            
-        Raises:
-            ValueError: If inputs is not a list or has fewer than 2 numbers
-        """
-        if not isinstance(self.inputs, list):
-            raise ValueError("Inputs must be a list of numbers.")
-        if len(self.inputs) < 2:
-            raise ValueError(
-                "Inputs must be a list with at least two numbers."
-            )
-        return sum(self.inputs)
+
+        return self.a + self.b
 
 
 class Subtraction(Calculation):
     """
     Subtraction calculation subclass.
     
-    Polymorphic Identity: 'subtraction'
-    Operation: Subtracts subsequent numbers from the first number
+    Polymorphic Identity: 'Subtract'
+    Operation: a - b
     
     Example:
-        sub = Subtraction(user_id=user_id, inputs=[10, 3, 2])
-        result = sub.get_result()  # Returns 5 (10 - 3 - 2)
+        sub = Subtraction(user_id=user_id, a=10, b=3)
+        result = sub.get_result()  # Returns 7
     """
-    __mapper_args__ = {"polymorphic_identity": "subtraction"}
+    __mapper_args__ = {"polymorphic_identity": "Subtract"}
 
     def get_result(self) -> float:
-        """
-        Subtract all subsequent numbers from the first number.
-        
-        Returns:
-            The result of sequential subtraction
-            
-        Raises:
-            ValueError: If inputs is not a list or has fewer than 2 numbers
-        """
-        if not isinstance(self.inputs, list):
-            raise ValueError("Inputs must be a list of numbers.")
-        if len(self.inputs) < 2:
-            raise ValueError(
-                "Inputs must be a list with at least two numbers."
-            )
-        result = self.inputs[0]
-        for value in self.inputs[1:]:
-            result -= value
-        return result
+
+        return self.a - self.b
 
 
 class Multiplication(Calculation):
     """
     Multiplication calculation subclass.
     
-    Polymorphic Identity: 'multiplication'
-    Operation: Multiplies all numbers in the inputs list
+    Polymorphic Identity: 'Multiply'
+    Operation: a * b
     
     Example:
-        mult = Multiplication(user_id=user_id, inputs=[2, 3, 4])
-        result = mult.get_result()  # Returns 24
+        mult = Multiplication(user_id=user_id, a=4, b=5)
+        result = mult.get_result()  # Returns 20
     """
-    __mapper_args__ = {"polymorphic_identity": "multiplication"}
+    __mapper_args__ = {"polymorphic_identity": "Multiply"}
 
     def get_result(self) -> float:
-        """
-        Calculate the product of all input numbers.
         
-        Returns:
-            The product of all inputs
-            
-        Raises:
-            ValueError: If inputs is not a list or has fewer than 2 numbers
-        """
-        if not isinstance(self.inputs, list):
-            raise ValueError("Inputs must be a list of numbers.")
-        if len(self.inputs) < 2:
-            raise ValueError(
-                "Inputs must be a list with at least two numbers."
-            )
-        result = 1
-        for value in self.inputs:
-            result *= value
-        return result
+        return self.a * self.b
 
 
 class Division(Calculation):
     """
     Division calculation subclass.
     
-    Polymorphic Identity: 'division'
-    Operation: Divides the first number by subsequent numbers sequentially
+    Polymorphic Identity: 'Divide'
+    Operation: a / b
     
     Example:
-        div = Division(user_id=user_id, inputs=[100, 2, 5])
-        result = div.get_result()  # Returns 10 (100 / 2 / 5)
-        
-    Note: This implementation uses EAFP (Easier to Ask for Forgiveness than
-    Permission) by checking for zero during calculation rather than before.
+        div = Division(user_id=user_id, a=100, b=5)
+        result = div.get_result()  # Returns 20.0
+    
+    Note: Division by zero is prevented in both the factory method
+    and the get_result() method for safety.
     """
-    __mapper_args__ = {"polymorphic_identity": "division"}
+    __mapper_args__ = {"polymorphic_identity": "Divide"}
 
     def get_result(self) -> float:
-        """
-        Divide the first number by all subsequent numbers sequentially.
-        
-        Returns:
-            The result of sequential division
-            
-        Raises:
-            ValueError: If inputs is not a list, has fewer than 2 numbers,
-                       or if attempting to divide by zero
-        """
-        if not isinstance(self.inputs, list):
-            raise ValueError("Inputs must be a list of numbers.")
-        if len(self.inputs) < 2:
-            raise ValueError(
-                "Inputs must be a list with at least two numbers."
-            )
-        result = self.inputs[0]
-        for value in self.inputs[1:]:
-            if value == 0:
-                raise ValueError("Cannot divide by zero.")
-            result /= value
-        return result
+        if self.b == 0:
+            raise ValueError("Cannot divide by zero")
+        return self.a / self.b

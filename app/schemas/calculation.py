@@ -43,10 +43,10 @@ class CalculationType(str, Enum):
     Inheriting from str makes this a string enum, so values serialize
     naturally as strings in JSON.
     """
-    ADDITION = "addition"
-    SUBTRACTION = "subtraction"
-    MULTIPLICATION = "multiplication"
-    DIVISION = "division"
+    ADD= "Add"
+    SUBTRACT = "Subtract"
+    MULTIPLY = "Multiply"
+    DIVIDE = "Divide"
 
 
 class CalculationBase(BaseModel):
@@ -59,17 +59,29 @@ class CalculationBase(BaseModel):
     Design Pattern: This follows the DRY (Don't Repeat Yourself) principle by
     defining common fields once and reusing them in other schemas.
     """
+    a: float = Field(
+        ...,
+        description="First operand",
+        examples=[10.5]
+    )
+    b: float = Field(
+        ...,
+        description="Second operand",
+        examples=[3.0]
+    )
     type: CalculationType = Field(
         ...,
         description="Type of calculation to perform",
-        examples=["addition"]
+        examples=["Add"]
     )
+    '''
     inputs: List[float] = Field(
         ...,
         description="List of numeric inputs for the calculation",
         examples=[[10.5, 3, 2]],
         min_length=2
     )
+    '''
 
     @field_validator("type", mode="before")
     @classmethod
@@ -92,11 +104,15 @@ class CalculationBase(BaseModel):
         """
         allowed = {e.value for e in CalculationType}
         # Ensure v is a string and check (in lowercase) if it's allowed.
-        if not isinstance(v, str) or v.lower() not in allowed:
-            raise ValueError(
-                f"Type must be one of: {', '.join(sorted(allowed))}"
-            )
-        return v.lower()
+        if isinstance(v, str):
+            # Capitalize first letter for case-insensitive matching
+            v = v.capitalize()
+            allowed = {e.value for e in CalculationType}
+            if v not in allowed:
+                raise ValueError(
+                    f"Type must be one of: {', '.join(sorted(allowed))}"
+                )
+        return v
 
     @field_validator("inputs", mode="before")
     @classmethod
