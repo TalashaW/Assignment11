@@ -85,3 +85,4 @@ def get_sessionmaker(engine):
         sessionmaker: A configured session factory
     """
     return sessionmaker(autocommit=False, autoflush=False, bind=engine)
+

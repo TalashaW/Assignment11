@@ -399,3 +399,74 @@ def test_multiple_calculation_repr():
     assert "type=Subtract" in reprs[1]
     assert "type=Multiply" in reprs[2]
     assert "type=Divide" in reprs[3]
+
+def test_user_repr():
+    """
+    Test the __repr__ method of the User model.
+    
+    This ensures the string representation of a User object
+    is correctly formatted for debugging purposes.
+    """
+    from app.models.user import User
+    import uuid
+    
+    # Create a User instance
+    user = User(
+        id=uuid.uuid4(),
+        username="testuser",
+        email="test@example.com"
+    )
+    
+    # Get the string representation
+    repr_string = repr(user)
+    
+    # Verify the repr contains the expected information
+    assert "User" in repr_string
+    assert "username=testuser" in repr_string
+    assert "email=test@example.com" in repr_string    
+
+# ============================================================================
+# Tests for Database Configuration Functions
+# ============================================================================
+
+def test_get_db_yields_session():
+    """
+    Test that get_db() yields a valid database session.
+    
+    This covers the get_db function body in database.py.
+    """
+    from app.database import get_db
+    from sqlalchemy.orm import Session
+    
+    db_generator = get_db()
+    db_session = next(db_generator)
+    
+    assert isinstance(db_session, Session), "get_db should yield a Session object"
+    
+    # Clean up
+    try:
+        next(db_generator)
+    except StopIteration:
+        pass
+
+
+def test_get_engine():
+    """Test that get_engine() creates a valid SQLAlchemy engine."""
+    from app.database import get_engine
+    from sqlalchemy.engine import Engine
+    
+    engine = get_engine("sqlite:///:memory:")
+    assert isinstance(engine, Engine)
+
+
+def test_get_sessionmaker():
+    """Test that get_sessionmaker() creates a valid sessionmaker factory."""
+    from app.database import get_sessionmaker, get_engine
+    from sqlalchemy.orm import Session
+    
+    test_engine = get_engine("sqlite:///:memory:")
+    session_factory = get_sessionmaker(test_engine)
+    
+    session = session_factory()
+    assert isinstance(session, Session)
+    session.close()
