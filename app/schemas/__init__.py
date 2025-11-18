@@ -11,7 +11,7 @@ from app.schemas.calculation import (
     CalculationBase,
     CalculationCreate,
     CalculationUpdate,
-    CalculationResponse
+    CalculationRead
 )
 
 __all__ = [
@@ -19,5 +19,5 @@ __all__ = [
     "CalculationBase",
     "CalculationCreate",
     "CalculationUpdate",
-    "CalculationResponse"
+    "CalculationRead"
 ]

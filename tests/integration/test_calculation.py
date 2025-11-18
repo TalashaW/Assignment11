@@ -54,10 +54,9 @@ def test_addition_get_result():
     This verifies that the Addition class correctly implements the
     polymorphic get_result() method for its specific operation.
     """
-    inputs = [10, 5, 3.5]
-    addition = Addition(user_id=dummy_user_id(), inputs=inputs)
+    addition = Addition(user_id=dummy_user_id(), a=10, b=5)
     result = addition.get_result()
-    assert result == sum(inputs), f"Expected {sum(inputs)}, got {result}"
+    assert result == 15, f"Expected 15, got {result}"
 
 
 def test_subtraction_get_result():
@@ -66,11 +65,9 @@ def test_subtraction_get_result():
     
     Subtraction performs sequential subtraction: first - second - third...
     """
-    inputs = [20, 5, 3]
-    subtraction = Subtraction(user_id=dummy_user_id(), inputs=inputs)
-    # Expected: 20 - 5 - 3 = 12
+    subtraction = Subtraction(user_id=dummy_user_id(), a=20, b=5)
     result = subtraction.get_result()
-    assert result == 12, f"Expected 12, got {result}"
+    assert result == 15, f"Expected 15, got {result}"
 
 
 def test_multiplication_get_result():
@@ -79,23 +76,19 @@ def test_multiplication_get_result():
     
     Multiplication multiplies all input numbers together.
     """
-    inputs = [2, 3, 4]
-    multiplication = Multiplication(user_id=dummy_user_id(), inputs=inputs)
+    multiplication = Multiplication(user_id=dummy_user_id(), a=3, b=4)
     result = multiplication.get_result()
-    assert result == 24, f"Expected 24, got {result}"
+    assert result == 12, f"Expected 12, got {result}"
 
 
 def test_division_get_result():
     """
     Test that Division.get_result returns the correct quotient.
     
-    Division performs sequential division: first / second / third...
     """
-    inputs = [100, 2, 5]
-    division = Division(user_id=dummy_user_id(), inputs=inputs)
-    # Expected: 100 / 2 / 5 = 10
+    division = Division(user_id=dummy_user_id(), a=100, b=5)
     result = division.get_result()
-    assert result == 10, f"Expected 10, got {result}"
+    assert result == 20, f"Expected 20, got {result}"
 
 
 def test_division_by_zero():
@@ -106,11 +99,51 @@ def test_division_by_zero():
     We attempt the operation and catch the exception rather than checking
     beforehand.
     """
-    inputs = [50, 0, 5]
-    division = Division(user_id=dummy_user_id(), inputs=inputs)
-    with pytest.raises(ValueError, match="Cannot divide by zero."):
+    division = Division(user_id=dummy_user_id(), a=50, b=0)
+    with pytest.raises(ValueError, match="Cannot divide by zero"):
         division.get_result()
 
+
+def test_division_by_zero():
+    """Test that Division.get_result raises ValueError when dividing by zero."""
+    division = Division(user_id=dummy_user_id(), a=50, b=0)
+    with pytest.raises(ValueError, match="Cannot divide by zero"):
+        division.get_result()
+
+
+def test_addition_with_negative_numbers():
+    """Test addition with negative numbers."""
+    addition = Addition(user_id=dummy_user_id(), a=-5, b=-3)
+    result = addition.get_result()
+    assert result == -8
+
+
+def test_subtraction_with_negative_result():
+    """Test subtraction resulting in negative number."""
+    subtraction = Subtraction(user_id=dummy_user_id(), a=5, b=10)
+    result = subtraction.get_result()
+    assert result == -5
+
+
+def test_multiplication_with_zero():
+    """Test multiplication with zero."""
+    multiplication = Multiplication(user_id=dummy_user_id(), a=100, b=0)
+    result = multiplication.get_result()
+    assert result == 0
+
+
+def test_division_with_zero_numerator():
+    """Test division with zero as numerator."""
+    division = Division(user_id=dummy_user_id(), a=0, b=5)
+    result = division.get_result()
+    assert result == 0.0
+
+
+def test_addition_with_floats():
+    """Test addition with floating point numbers."""
+    addition = Addition(user_id=dummy_user_id(), a=10.5, b=5.3)
+    result = addition.get_result()
+    assert abs(result - 15.8) < 0.001
 
 # ============================================================================
 # Tests for Polymorphic Factory Pattern
@@ -129,19 +162,17 @@ def test_calculation_factory_addition():
     2. The returned object behaves as both Calculation and Addition
     3. Type-specific behavior (get_result) works correctly
     """
-    inputs = [1, 2, 3]
     calc = Calculation.create(
-        calculation_type='addition',
+        calculation_type='Add',
         user_id=dummy_user_id(),
-        inputs=inputs,
+        a=1,
+        b=2
     )
-    # Verify polymorphism: factory returned the correct subclass
     assert isinstance(calc, Addition), \
         "Factory did not return an Addition instance."
     assert isinstance(calc, Calculation), \
         "Addition should also be an instance of Calculation."
-    # Verify behavior: subclass implements get_result() correctly
-    assert calc.get_result() == sum(inputs), "Incorrect addition result."
+    assert calc.get_result() == 3, "Incorrect addition result."
 
 
 def test_calculation_factory_subtraction():
@@ -151,13 +182,12 @@ def test_calculation_factory_subtraction():
     Demonstrates that the factory pattern works consistently across
     different calculation types.
     """
-    inputs = [10, 4]
     calc = Calculation.create(
-        calculation_type='subtraction',
+        calculation_type='Subtract',
         user_id=dummy_user_id(),
-        inputs=inputs,
+        a=10,
+        b=4
     )
-    # Expected: 10 - 4 = 6
     assert isinstance(calc, Subtraction), \
         "Factory did not return a Subtraction instance."
     assert calc.get_result() == 6, "Incorrect subtraction result."
@@ -167,32 +197,30 @@ def test_calculation_factory_multiplication():
     """
     Test the Calculation.create factory method for multiplication.
     """
-    inputs = [3, 4, 2]
     calc = Calculation.create(
-        calculation_type='multiplication',
+        calculation_type='Multiply',
         user_id=dummy_user_id(),
-        inputs=inputs,
+        a=3,
+        b=4
     )
-    # Expected: 3 * 4 * 2 = 24
     assert isinstance(calc, Multiplication), \
         "Factory did not return a Multiplication instance."
-    assert calc.get_result() == 24, "Incorrect multiplication result."
+    assert calc.get_result() == 12, "Incorrect multiplication result."
 
 
 def test_calculation_factory_division():
     """
     Test the Calculation.create factory method for division.
     """
-    inputs = [100, 2, 5]
     calc = Calculation.create(
-        calculation_type='division',
+        calculation_type='Divide',
         user_id=dummy_user_id(),
-        inputs=inputs,
+        a=100,
+        b=5
     )
-    # Expected: 100 / 2 / 5 = 10
     assert isinstance(calc, Division), \
         "Factory did not return a Division instance."
-    assert calc.get_result() == 10, "Incorrect division result."
+    assert calc.get_result() == 20, "Incorrect division result."
 
 
 def test_calculation_factory_invalid_type():
@@ -204,9 +232,10 @@ def test_calculation_factory_invalid_type():
     """
     with pytest.raises(ValueError, match="Unsupported calculation type"):
         Calculation.create(
-            calculation_type='modulus',  # unsupported type
+            calculation_type='Modulus',
             user_id=dummy_user_id(),
-            inputs=[10, 3],
+            a=10,
+            b=3
         )
 
 
@@ -216,94 +245,41 @@ def test_calculation_factory_case_insensitive():
     
     The factory should accept 'Addition', 'ADDITION', 'addition', etc.
     """
-    inputs = [5, 3]
-    
-    # Test various cases
-    for calc_type in ['addition', 'Addition', 'ADDITION', 'AdDiTiOn']:
+    for calc_type in ['add', 'Add', 'ADD', 'AdD']:
         calc = Calculation.create(
             calculation_type=calc_type,
             user_id=dummy_user_id(),
-            inputs=inputs,
+            a=5,
+            b=3
         )
         assert isinstance(calc, Addition), \
             f"Factory failed for case: {calc_type}"
         assert calc.get_result() == 8
 
-
-# ============================================================================
-# Tests for Input Validation (Edge Cases)
-# ============================================================================
-
-def test_invalid_inputs_for_addition():
-    """
-    Test that providing non-list inputs to Addition.get_result raises error.
-    
-    This verifies that calculations properly validate their inputs before
-    attempting operations.
-    """
-    addition = Addition(user_id=dummy_user_id(), inputs="not-a-list")
-    with pytest.raises(ValueError, match="Inputs must be a list of numbers."):
-        addition.get_result()
+def test_calculation_factory_division_by_zero():
+    """Test that factory prevents division by zero at creation time."""
+    with pytest.raises(ValueError, match="Cannot divide by zero"):
+        Calculation.create(
+            calculation_type='Divide',
+            user_id=dummy_user_id(),
+            a=100,
+            b=0
+        )
 
 
-def test_invalid_inputs_for_subtraction():
-    """
-    Test that providing fewer than two numbers raises a ValueError.
-    
-    All calculations require at least two inputs to be meaningful.
-    """
-    subtraction = Subtraction(user_id=dummy_user_id(), inputs=[10])
-    with pytest.raises(
-        ValueError,
-        match="Inputs must be a list with at least two numbers."
-    ):
-        subtraction.get_result()
+def test_calculation_factory_stores_result():
+    """Test that factory computes and stores result."""
+    calc = Calculation.create(
+        calculation_type='Multiply',
+        user_id=dummy_user_id(),
+        a=7,
+        b=6
+    )
+    # Result should be pre-computed and stored
+    assert calc.result == 42
+    # And get_result() should return the same value
+    assert calc.get_result() == 42
 
-
-def test_invalid_inputs_for_multiplication():
-    """
-    Test that Multiplication requires at least two inputs.
-    """
-    multiplication = Multiplication(user_id=dummy_user_id(), inputs=[5])
-    with pytest.raises(
-        ValueError,
-        match="Inputs must be a list with at least two numbers."
-    ):
-        multiplication.get_result()
-
-
-def test_invalid_inputs_for_division():
-    """
-    Test that Division requires at least two inputs.
-    """
-    division = Division(user_id=dummy_user_id(), inputs=[10])
-    with pytest.raises(
-        ValueError,
-        match="Inputs must be a list with at least two numbers."
-    ):
-        division.get_result()
-
-
-def test_division_by_zero_in_middle():
-    """
-    Test division by zero when zero appears in the middle of inputs.
-    
-    This ensures zero validation works for any position after the first.
-    """
-    inputs = [100, 5, 0, 2]
-    division = Division(user_id=dummy_user_id(), inputs=inputs)
-    with pytest.raises(ValueError, match="Cannot divide by zero."):
-        division.get_result()
-
-
-def test_division_by_zero_at_end():
-    """
-    Test division by zero when zero is the last input.
-    """
-    inputs = [50, 5, 0]
-    division = Division(user_id=dummy_user_id(), inputs=inputs)
-    with pytest.raises(ValueError, match="Cannot divide by zero."):
-        division.get_result()
 
 
 # ============================================================================
@@ -316,18 +292,15 @@ def test_polymorphic_list_of_calculations():
     
     This demonstrates polymorphism: A list of Calculation objects can contain
     different subclasses, and each maintains its type-specific behavior.
-    
-    This is a key benefit of polymorphism: you can treat different types
-    uniformly while they maintain their unique implementations.
     """
     user_id = dummy_user_id()
     
     # Create a list of different calculation types
     calculations = [
-        Calculation.create('addition', user_id, [1, 2, 3]),
-        Calculation.create('subtraction', user_id, [10, 3]),
-        Calculation.create('multiplication', user_id, [2, 3, 4]),
-        Calculation.create('division', user_id, [100, 5]),
+        Calculation.create('Add', user_id, a=10, b=5),
+        Calculation.create('Subtract', user_id, a=10, b=3),
+        Calculation.create('Multiply', user_id, a=4, b=5),
+        Calculation.create('Divide', user_id, a=100, b=5),
     ]
     
     # Each calculation maintains its specific type
@@ -340,7 +313,7 @@ def test_polymorphic_list_of_calculations():
     results = [calc.get_result() for calc in calculations]
     
     # Each produces its type-specific result
-    assert results == [6, 7, 24, 20]
+    assert results == [15, 7, 20, 20]
 
 
 def test_polymorphic_method_calling():
@@ -348,19 +321,81 @@ def test_polymorphic_method_calling():
     Test that polymorphic methods work correctly.
     
     This demonstrates that you can call get_result() on any Calculation
-    subclass and get the correct type-specific behavior without knowing
-    the exact subclass type at compile time.
+    subclass and get the correct type-specific behavior.
     """
     user_id = dummy_user_id()
-    inputs = [10, 2]
     
     # Create calculations dynamically based on type string
-    calc_types = ['addition', 'subtraction', 'multiplication', 'division']
+    calc_types = ['Add', 'Subtract', 'Multiply', 'Divide']
     expected_results = [12, 8, 20, 5]
     
     for calc_type, expected in zip(calc_types, expected_results):
-        calc = Calculation.create(calc_type, user_id, inputs)
-        # Polymorphic method call: same method name, different behavior
+        calc = Calculation.create(calc_type, user_id, a=10, b=2)
         result = calc.get_result()
         assert result == expected, \
             f"{calc_type} failed: expected {expected}, got {result}"
+
+def test_base_calculation_get_result_not_implemented():
+    """
+    Test that calling get_result() on the base Calculation class raises NotImplementedError.
+    
+    This covers line 218 - the NotImplementedError in AbstractCalculation.get_result().
+    The base class should never have get_result() called directly; it's meant to be
+    overridden by subclasses.
+    """
+
+    calc = Calculation(user_id=dummy_user_id(), a=10, b=5)
+    calc.type = 'calculation'  # Set the base type
+    
+    with pytest.raises(NotImplementedError, match="Subclasses must implement get_result"):
+        calc.get_result()
+
+
+def test_calculation_repr():
+    """
+    Test the __repr__ method of calculation objects.
+    
+    This covers line 223 - the __repr__ method.
+    The repr should provide a useful string representation for debugging.
+    """
+    addition = Addition(user_id=dummy_user_id(), a=10, b=5)
+    addition.result = addition.get_result()
+    
+    repr_string = repr(addition)
+    
+    # Verify the repr contains key information
+    assert "Calculation" in repr_string
+    assert "type=Add" in repr_string
+    assert "a=10" in repr_string or "a=10.0" in repr_string
+    assert "b=5" in repr_string or "b=5.0" in repr_string
+    assert "result=15" in repr_string or "result=15.0" in repr_string
+
+
+def test_multiple_calculation_repr():
+    """
+    Test __repr__ for different calculation types to ensure consistency.
+    
+    This provides additional coverage and verification of the __repr__ method
+    across all calculation types.
+    """
+    user_id = dummy_user_id()
+    
+    calculations = [
+        Addition(user_id=user_id, a=7, b=3),
+        Subtraction(user_id=user_id, a=10, b=4),
+        Multiplication(user_id=user_id, a=6, b=2),
+        Division(user_id=user_id, a=20, b=5),
+    ]
+    
+    # Compute results for all
+    for calc in calculations:
+        calc.result = calc.get_result()
+    
+    # Verify each has a meaningful repr
+    reprs = [repr(calc) for calc in calculations]
+    
+    assert all("Calculation" in r for r in reprs)
+    assert "type=Add" in reprs[0]
+    assert "type=Subtract" in reprs[1]
+    assert "type=Multiply" in reprs[2]
+    assert "type=Divide" in reprs[3]
