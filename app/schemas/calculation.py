@@ -43,7 +43,7 @@ class CalculationType(str, Enum):
     Inheriting from str makes this a string enum, so values serialize
     naturally as strings in JSON.
     """
-    ADD= "Add"
+    ADD = "Add"
     SUBTRACT = "Subtract"
     MULTIPLY = "Multiply"
     DIVIDE = "Divide"
@@ -74,14 +74,6 @@ class CalculationBase(BaseModel):
         description="Type of calculation to perform",
         examples=["Add"]
     )
-    '''
-    inputs: List[float] = Field(
-        ...,
-        description="List of numeric inputs for the calculation",
-        examples=[[10.5, 3, 2]],
-        min_length=2
-    )
-    '''
 
     @field_validator("type", mode="before")
     @classmethod
@@ -102,8 +94,6 @@ class CalculationBase(BaseModel):
         Raises:
             ValueError: If the type is not a valid calculation type
         """
-        allowed = {e.value for e in CalculationType}
-        # Ensure v is a string and check (in lowercase) if it's allowed.
         if isinstance(v, str):
             # Capitalize first letter for case-insensitive matching
             v = v.capitalize()
@@ -114,66 +104,31 @@ class CalculationBase(BaseModel):
                 )
         return v
 
-    @field_validator("inputs", mode="before")
-    @classmethod
-    def check_inputs_is_list(cls, v):
-        """
-        Validate that inputs is a list.
-        
-        This validator provides a clearer error message than Pydantic's
-        default validation when inputs is not a list.
-        
-        Args:
-            v: The value to validate
-            
-        Returns:
-            The validated list
-            
-        Raises:
-            ValueError: If inputs is not a list
-        """
-        if not isinstance(v, list):
-            raise ValueError("Input should be a valid list")
-        return v
 
     @model_validator(mode='after')
-    def validate_inputs(self) -> "CalculationBase":
+    def validate_division_by_zero(self):
         """
-        Validate inputs based on calculation type.
+        Validate that division by zero is prevented.
         
         This is a model validator that runs AFTER all fields are validated.
-        It can access multiple fields (self.type and self.inputs) to perform
-        cross-field validation.
-        
-        Business Rules:
-        1. All calculations require at least 2 inputs
-        2. Division cannot have zero in denominators (positions 1+)
-        
-        This demonstrates LBYL (Look Before You Leap) - we validate before
-        attempting the operation.
+        It can access multiple fields to perform cross-field validation.
         
         Returns:
             self: The validated model instance
             
         Raises:
-            ValueError: If validation fails
+            ValueError: If attempting to divide by zero
         """
-        if len(self.inputs) < 2:
-            raise ValueError(
-                "At least two numbers are required for calculation"
-            )
-        if self.type == CalculationType.DIVISION:
-            # Prevent division by zero (skip first value as numerator)
-            if any(x == 0 for x in self.inputs[1:]):
-                raise ValueError("Cannot divide by zero")
+        if self.type == CalculationType.DIVIDE and self.b == 0:
+            raise ValueError("Cannot divide by zero")
         return self
 
     model_config = ConfigDict(
         from_attributes=True,
         json_schema_extra={
             "examples": [
-                {"type": "addition", "inputs": [10.5, 3, 2]},
-                {"type": "division", "inputs": [100, 2]}
+                {"a": 10.5, "b": 3, "type": "Add"},
+                {"a": 100, "b": 2, "type": "Divide"}
             ]
         }
     )
@@ -198,8 +153,9 @@ class CalculationCreate(CalculationBase):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "type": "addition",
-                "inputs": [10.5, 3, 2],
+                "a": 10.5,
+                "b": 3,                
+                "type": "Add",
                 "user_id": "123e4567-e89b-12d3-a456-426614174000"
             }
         }
@@ -216,11 +172,15 @@ class CalculationUpdate(BaseModel):
     Note: The calculation type cannot be changed after creation. If you need
     a different type, create a new calculation.
     """
-    inputs: Optional[List[float]] = Field(
+    a: Optional[float] = Field(
         None,
-        description="Updated list of numeric inputs for the calculation",
-        examples=[[42, 7]],
-        min_length=2
+        description="Updated first operand",
+        examples=[42.0]
+    )
+    b: Optional[float] = Field(
+        None,
+        description="Updated second operand",
+        examples=[7.0]
     )
 
     @model_validator(mode='after')
@@ -234,19 +194,22 @@ class CalculationUpdate(BaseModel):
         Raises:
             ValueError: If inputs has fewer than 2 numbers
         """
-        if self.inputs is not None and len(self.inputs) < 2:
+        if self.a is None and self.b is None:
             raise ValueError(
-                "At least two numbers are required for calculation"
+                "At least one field (a or b) must be provided for update"
             )
         return self
 
     model_config = ConfigDict(
         from_attributes=True,
-        json_schema_extra={"example": {"inputs": [42, 7]}}
+        json_schema_extra={
+            "example": {"a": 42, "b": 7}
+        }
     )
 
 
-class CalculationResponse(CalculationBase):
+
+class CalculationRead(CalculationBase):
     """
     Schema for reading a Calculation from the database.
     
@@ -287,8 +250,9 @@ class CalculationResponse(CalculationBase):
             "example": {
                 "id": "123e4567-e89b-12d3-a456-426614174999",
                 "user_id": "123e4567-e89b-12d3-a456-426614174000",
-                "type": "addition",
-                "inputs": [10.5, 3, 2],
+                "type": "Add",
+                "a": 10.5,
+                "b": 3,
                 "result": 15.5,
                 "created_at": "2025-01-01T00:00:00",
                 "updated_at": "2025-01-01T00:00:00"

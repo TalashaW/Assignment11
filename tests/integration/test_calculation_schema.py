@@ -2,9 +2,9 @@
 """
 Integration Tests for Calculation Pydantic Schemas
 
+
 These tests verify that Pydantic schemas correctly validate calculation data
-before it reaches the application logic. This is an important security and
-data integrity layer that prevents invalid data from entering the system.
+using the 'a' and 'b' operand design.
 
 Key Testing Concepts:
 1. Valid Data: Ensure schemas accept correct data
@@ -21,7 +21,7 @@ from app.schemas.calculation import (
     CalculationBase,
     CalculationCreate,
     CalculationUpdate,
-    CalculationResponse
+    CalculationRead
 )
 
 
@@ -31,10 +31,10 @@ from app.schemas.calculation import (
 
 def test_calculation_type_enum_values():
     """Test that CalculationType enum has correct values."""
-    assert CalculationType.ADDITION.value == "addition"
-    assert CalculationType.SUBTRACTION.value == "subtraction"
-    assert CalculationType.MULTIPLICATION.value == "multiplication"
-    assert CalculationType.DIVISION.value == "division"
+    assert CalculationType.ADD.value == "Add"
+    assert CalculationType.SUBTRACT.value == "Subtract"
+    assert CalculationType.MULTIPLY.value == "Multiply"
+    assert CalculationType.DIVIDE.value == "Divide"
 
 
 # ============================================================================
@@ -44,31 +44,35 @@ def test_calculation_type_enum_values():
 def test_calculation_base_valid_addition():
     """Test CalculationBase with valid addition data."""
     data = {
-        "type": "addition",
-        "inputs": [10.5, 3, 2]
+        "type": "Add",
+        "a": 10.5,
+        "b": 3.0
     }
     calc = CalculationBase(**data)
-    assert calc.type == CalculationType.ADDITION
-    assert calc.inputs == [10.5, 3, 2]
+    assert calc.type == CalculationType.ADD
+    assert calc.a == 10.5
+    assert calc.b == 3.0
 
 
 def test_calculation_base_valid_subtraction():
     """Test CalculationBase with valid subtraction data."""
     data = {
-        "type": "subtraction",
-        "inputs": [20, 5.5]
+        "type": "Subtract",
+        "a": 20,
+        "b": 5.5
     }
     calc = CalculationBase(**data)
-    assert calc.type == CalculationType.SUBTRACTION
-    assert calc.inputs == [20, 5.5]
+    assert calc.type == CalculationType.SUBTRACT
+    assert calc.a == 20
+    assert calc.b == 5.5
 
 
 def test_calculation_base_case_insensitive_type():
     """Test that calculation type is case-insensitive."""
-    for type_variant in ["Addition", "ADDITION", "AdDiTiOn"]:
-        data = {"type": type_variant, "inputs": [1, 2]}
+    for type_variant in ["add", "Add", "ADD", "AdD"]:
+        data = {"type": type_variant, "a": 1, "b": 2}
         calc = CalculationBase(**data)
-        assert calc.type == CalculationType.ADDITION
+        assert calc.type == CalculationType.ADD
 
 
 def test_calculation_base_invalid_type():
@@ -245,8 +249,8 @@ def test_calculation_update_insufficient_inputs():
 # Tests for CalculationResponse Schema
 # ============================================================================
 
-def test_calculation_response_valid():
-    """Test CalculationResponse with all required fields."""
+def test_calculation_read_valid():
+    """Test CalculationRead with all required fields."""
     from datetime import datetime
     
     data = {
@@ -258,13 +262,13 @@ def test_calculation_response_valid():
         "created_at": datetime.utcnow(),
         "updated_at": datetime.utcnow()
     }
-    calc = CalculationResponse(**data)
+    calc = CalculationRead(**data)
     assert calc.result == 15.0
     assert calc.type == CalculationType.ADDITION
 
 
-def test_calculation_response_missing_result():
-    """Test that CalculationResponse requires result field."""
+def test_calculation_read_missing_result():
+    """Test that CalculationRead requires result field."""
     from datetime import datetime
     
     data = {
@@ -277,7 +281,7 @@ def test_calculation_response_missing_result():
         "updated_at": datetime.utcnow()
     }
     with pytest.raises(ValidationError) as exc_info:
-        CalculationResponse(**data)
+        CalculationRead(**data)
     
     errors = exc_info.value.errors()
     assert any("result" in str(err) for err in errors)
